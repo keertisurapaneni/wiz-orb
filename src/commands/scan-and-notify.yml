@@ -1,0 +1,43 @@
+description: >
+  This command downloads Wiz CLI and performs a security vulnerability scan.
+  It also filters critical/high serverity vulnerabilities and sends a notification to a user defined Slack channel
+
+parameters:
+  image:
+    description: Docker image you want to scan in Wiz
+    type: string
+    default: ""
+  wizcli_id:
+    description: Wiz CLI ID
+    type: env_var_name
+    default: WIZCLI_ID
+  wizcli_secret:
+    description: Wiz CLI secret
+    type: env_var_name
+    default: WIZCLI_SECRET
+  vulnerability_policy:
+    description: Custom Wiz vulnerability policy you want to use
+    type: string
+    default: "rv-ignore-unfixed-vuln-policy"
+  slack_channel:
+    description: Slack channel to send notification to
+    type: string
+
+steps:
+  - scan:
+      image: <<parameters.image>>
+      vulnerability_policy: <<parameters.vulnerability_policy>>
+      wizcli_id: <<parameters.wizcli_id>>
+      wizcli_secret: <<parameters.wizcli_secret>>
+  - run:
+      name: Parse Wiz results
+      shell: /bin/bash
+      command: <<include(scripts/parse_results.sh)>>
+      when: on_fail
+  - run:
+      name: Echo $WIZ_RESULT output
+      command: <<include(scripts/output.sh)>>
+  - slack/notify:
+      event: fail
+      channel: <<parameters.slack_channel>> # channel ID
+      custom: <<include(templates/fail.json)>>

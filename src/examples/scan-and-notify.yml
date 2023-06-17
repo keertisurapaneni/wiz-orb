@@ -1,0 +1,31 @@
+description: >
+  Use the scan-and-notify command to scan the Docker image and send Slack notifications on high/critical vulnerabilities
+
+usage:
+  version: 2.1
+  orbs:
+    wiz: redventures/wiz@x.y.z
+
+  jobs:
+    build-scan-notify:
+      docker:
+        - image: cimg/node:lts
+      environment:
+        IMAGE: myrepo/myapp
+      steps:
+        - checkout
+        - setup_remote_docker:
+            docker_layer_caching: true
+        - run:
+            name: Build Docker image
+            command: 'docker build -t $IMAGE:latest .'
+        - wiz/scan-and-notify:
+            image: '$IMAGE_NAME:latest'
+            slack_channel: 'lp-test'
+
+  workflows:
+    prod-build:
+      jobs:
+        - build-scan-notify:
+            context:
+              - wiz

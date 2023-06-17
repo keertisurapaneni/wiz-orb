@@ -1,0 +1,32 @@
+description: >
+  Use the scan command to scan the Docker image.
+# Provide a use-case based example for using this orb.
+# Everything in the `usage` section will be displayed in the orb registry.
+# Comments are not retained.
+usage:
+  version: 2.1
+  orbs:
+    wiz: redventures/wiz@x.y.z
+
+  jobs:
+    build-scan:
+      docker:
+        - image: cimg/node:lts
+      environment:
+        IMAGE: myrepo/myapp
+      steps:
+        - checkout
+        - setup_remote_docker:
+            docker_layer_caching: true
+        - run:
+            name: Build Docker image
+            command: 'docker build -t $IMAGE:latest .'
+        - wiz/scan:
+            image: '$IMAGE_NAME:latest'
+
+  workflows:
+    nonprod-build:
+      jobs:
+        - build-scan:
+            context:
+              - wiz

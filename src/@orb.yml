@@ -1,0 +1,16 @@
+version: 2.1
+
+description: >
+  The Wiz orb scans a Docker image for high/critical vulnerabilities and sends Slack notifications on failure
+# What will your orb allow users to accomplish?
+# Descriptions should be short, simple, and informative.
+
+# This information will be displayed in the orb registry and is not mandatory.
+display:
+  home_url: https://github.com/RedVentures/wiz-orb
+  source_url: https://github.com/RedVentures/wiz-orb
+
+# If your orb requires other orbs, you can import them like this. Otherwise remove the "orbs" stanza.
+orbs:
+ slack: circleci/slack@4.10.1
+ continuation: circleci/continuation@0.3.1

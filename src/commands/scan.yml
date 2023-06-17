@@ -1,0 +1,37 @@
+description: >
+  This command downloads Wiz CLI and performs a security vulnerability scan and uploads the results as an artifact.
+
+parameters:
+  image:
+    description: Docker image you want to scan in Wiz
+    type: string
+    default: ""
+  wizcli_id:
+    description: Wiz CLI ID
+    type: env_var_name
+    default: WIZCLI_ID
+  wizcli_secret:
+    description: Wiz CLI secret
+    type: env_var_name
+    default: WIZCLI_SECRET
+  vulnerability_policy:
+    description: Custom Wiz vulnerability policy you want to use
+    type: string
+    default: "rv-ignore-unfixed-vuln-policy"
+
+
+steps:
+  - run:
+      name: Download wizcli
+      command: <<include(scripts/install_wiz.sh)>>
+  - run:
+      name: Scan Docker image with wizcli
+      command: <<include(scripts/wiz_scan.sh)>>
+      environment:
+        IMAGE: <<parameters.image>>
+        VULNERABILITY_POLICY: <<parameters.vulnerability_policy>>
+        WIZCLI_ID_VAL: <<parameters.wizcli_id>>
+        WIZCLI_SECRET_VAL: <<parameters.wizcli_secret>>
+  - store_artifacts:
+      path: wiz_results.txt
+      destination: wiz_results

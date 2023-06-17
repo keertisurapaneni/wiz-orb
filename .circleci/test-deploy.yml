@@ -1,0 +1,107 @@
+description: |
+  After your orb has been packed and published to a dev version, we can load that specific development version in this workflow.
+  With the orb loaded, we can run "integration tests" by executing our orbs commands and jobs and validating their output.
+  Finally, if the commit has been tagged (ex v1.0.0), we can publish the orb to a production version.
+  For advanced usage, see the full docs linked in the "Homepage" url above.
+version: 2.1
+orbs:
+  wiz: redventures/wiz@dev:<<pipeline.git.revision>>
+  orb-tools: circleci/orb-tools@11.1
+
+filters: &filters
+  branches:
+    only: /.*/
+  tags:
+    ignore: /.*/
+
+tags: &tags
+  branches:
+    ignore: /.*/
+  tags:
+    only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+jobs:
+  # Create a job to test the commands of your orbs.
+  # You may want to add additional validation steps to ensure the commands are working as expected.
+  wiz-scan:
+    docker:
+      - image: cimg/base:current
+    parameters:
+      test-image:
+        type: string
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      # Pull the test images
+      - run:
+          name: Docker pull image
+          command: |
+            docker pull <<parameters.test-image>>
+      # Run your orb's commands to validate them.
+      - wiz/scan:
+          image: <<parameters.test-image>>
+
+  wiz-scan-notify:
+    docker:
+      - image: cimg/base:current
+    parameters:
+      test-image:
+        type: string
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      # Pull the test images
+      - run:
+          name: Docker pull image
+          command: |
+            docker pull <<parameters.test-image>>
+      # Run your orb's commands to validate them.          
+      - wiz/scan-and-notify:
+          image: <<parameters.test-image>>
+          slack_channel: "lp-test"
+      
+workflows:
+  test-deploy:
+    when: always # This is to run publish job even when wiz-scan job fails
+    jobs:
+      # Make sure to include "filters: *filters" in every test job you want to run as part of your deployment.
+      - wiz-scan:
+          context:
+            - wiz
+          filters: *filters
+          matrix:
+            parameters:
+              # golang image has vulnerabilities, alpine image doesn't have any vulnerabilities
+              test-image: ["golang:1.15.11-alpine", "alpine:3.16"]
+      - wiz-scan-notify:
+          context:
+            - wiz
+          filters: *filters
+          matrix:
+            parameters:
+              # golang image has vulnerabilities, alpine image doesn't have any vulnerabilities
+              test-image: ["golang:1.15.11-alpine", "alpine:3.16"]
+  
+  publish-version:
+    jobs:
+      - wiz-scan:
+          context:
+            - wiz
+          filters: *tags
+          matrix:
+            parameters:
+              test-image: ["alpine:3.16"] # Use image without vulnerabilities while creating/publishing a new version so the command-test passes successfully
+      - orb-tools/pack:
+          filters: *tags
+      - orb-tools/publish:
+          orb-name: redventures/wiz
+          vcs-type: << pipeline.project.type >>
+          pub-type: production
+          requires:
+            - orb-tools/pack
+            - wiz-scan
+          context: 
+            - orb-publishing
+          filters: *tags
